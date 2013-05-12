@@ -1,7 +1,6 @@
-import urllib
-import httplib2 as http
-import json
-import socket
+from urllib import request, parse
+from json import loads
+from socket import timeout
 
 from threading import Thread
 
@@ -10,7 +9,7 @@ def fmtId( string ):
     return string[1:len( string ) - 1]
 
 def getParamString(params):
-    return bytes(urllib.parse.urlencode(params), 'ascii')
+    return bytes(parse.urlencode(params), 'ascii')
 
 class OmegleClient(Thread):
     def __init__(self, message_callback = print):
@@ -25,12 +24,12 @@ class OmegleClient(Thread):
 
         #Show the server that we're typing
         data = getParamString({"id" : self.id})
-        typing = urllib.request.urlopen('http://omegle.com/typing', data)
+        typing = request.urlopen('http://omegle.com/typing', data)
         typing.close()
 
         #Send the string to the stranger ID
         data = getParamString({"msg":message, "id":self.id})
-        msgReq = urllib.request.urlopen('http://omegle.com/send', data)
+        msgReq = request.urlopen('http://omegle.com/send', data)
 
         #Close the connection
         msgReq.close()
@@ -41,11 +40,12 @@ class OmegleClient(Thread):
         while True:
 
             try:
-                site = urllib.request.urlopen(self.req, timeout=10)
-            except socket.timeout:
+                site = request.urlopen(self.req, timeout=10)
+            except timeout:
                 break
             #We read the HTTP output to get what's going on
-            rec = json.loads(site.read().decode('ascii'))[0]
+            rec = loads(site.read().decode('ascii'))[0]
+            print("got response {}".format(rec))
 
             if rec[0] == 'connected':
                 print('Found one')
@@ -66,11 +66,11 @@ class OmegleClient(Thread):
 #Here we listen to the start page to acquire the ID, then we "clean" the string to isolate the ID
     def omegleConnect(self):
         self.messages = []
-        site = urllib.request.urlopen('http://omegle.com/start')
+        site = request.urlopen('http://omegle.com/start')
         self.id = fmtId( site.read() )
         print(self.id)
         data = getParamString({'id':self.id}) #, 'topics':'''["test"]'''})
-        self.req = urllib.request.Request('http://omegle.com/events', data)
+        self.req = request.Request('http://omegle.com/events', data)
         print('Gotta find one')
 
         #Then we open our ears to the wonders of the events page, where we know if anything happens
