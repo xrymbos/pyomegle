@@ -21,21 +21,28 @@ class OmegleClient(Thread):
 
 #Talk to people
     def sendMessage(self, message):
+        if self.connected:
+            #Show the server that we're typing
+            data = getParamString({"id" : self.id})
+            typing = request.urlopen('http://omegle.com/typing', data)
+            typing.close()
 
-        #Show the server that we're typing
-        data = getParamString({"id" : self.id})
-        typing = request.urlopen('http://omegle.com/typing', data)
-        typing.close()
+            #Send the string to the stranger ID
+            data = getParamString({"msg":message, "id":self.id})
+            msgReq = request.urlopen('http://omegle.com/send', data)
 
-        #Send the string to the stranger ID
-        data = getParamString({"msg":message, "id":self.id})
-        msgReq = request.urlopen('http://omegle.com/send', data)
+            #Close the connection
+            msgReq.close()
+        else:
+            self.messages.append(message)
 
-        #Close the connection
-        msgReq.close()
+    def printQueuedMessages(self):
+        while len(self.messages) > 0:
+            message = self.messages.pop()
+            self.message_callback(message)
+            print("resent {}".format(message))
 
-
-#This is where all the magic happens, we listen constantly to the page for events
+    #This is where all the magic happens, we listen constantly to the page for events
     def listenServer(self):
         while True:
 
@@ -48,10 +55,10 @@ class OmegleClient(Thread):
             print("got response {}".format(rec))
 
             if rec[0] == 'connected':
+                self.connected = True
+                self.printQueuedMessages()
                 print('Found one')
-                #print(self.id)
-                #Since this isn't threaded yet, it executes the talk function (yeah, turn by turn)
-                
+
             elif rec[0] == 'strangerDisconnected':
                 print('He is gone')
                 #We start the whole process again
@@ -59,12 +66,15 @@ class OmegleClient(Thread):
 
             #When we receive a message, print it and execute the talk function            
             elif rec[0] == 'gotMessage':
+                self.printQueuedMessages()
+                self.connected = True
                 self.message_callback(rec[1])
                 #print(rec[16:len( rec ) - 2])
         self.omegleConnect()
 
 #Here we listen to the start page to acquire the ID, then we "clean" the string to isolate the ID
     def omegleConnect(self):
+        self.connected = False
         self.messages = []
         site = request.urlopen('http://omegle.com/start')
         self.id = fmtId( site.read() )
