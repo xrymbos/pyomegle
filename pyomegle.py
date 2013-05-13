@@ -119,16 +119,17 @@ alice = OmegleClient(name = "Alice")
 bob = OmegleClient(name = "Bob")
 
 def fiddleMessage(message):
-    message = message.lower()
-    #replace m with f
-    rep = {r"\bm\b": "f here", r"\bf\b": "m"}
-    reg_lookup = {"m":r"\bm\b", "f":r"\bf\b"}
-    robj = re.compile("|".join(rep.keys()))
-    result = robj.sub(lambda m: rep[reg_lookup[m.group(0)]], message)
+    result = message.lower()
+    #replace m with f and vice versa
+    #rep = {r"\bm\b": "f here", r"\bf\b": "m"}
+    #reg_lookup = {"m":r"\bm\b", "f":r"\bf\b"}
+    #robj = re.compile("|".join(rep.keys()))
+    #result = robj.sub(lambda m: rep[reg_lookup[m.group(0)]], message)
     rep = {
         r"\bhi\b": "Good day!",
+        r"\bm\b": "f here",
         r"\bhey\b": "Good day!",
-        r"\bkik\b": "naked pictures",
+        r"\bkik\b": "skype",
         r"\basl\b": "Greetings! Whereabouts are you from?",
         r"\blol\b": "Ha ha ha! I do find that amusing!"}
     for search, replace in rep.items():
