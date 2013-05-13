@@ -1,6 +1,7 @@
 from urllib import request, parse
 from json import loads
 from socket import timeout
+from re import *
 
 from threading import Thread
 
@@ -9,7 +10,7 @@ def fmtId( string ):
     return string[1:len( string ) - 1]
 
 def getParamString(params):
-    return bytes(parse.urlencode(params), 'ascii')
+    return bytes(parse.urlencode(params), 'utf-8')
 
 def doNothing():
     return 0
@@ -17,6 +18,7 @@ def doNothing():
 class OmegleClient(Thread):
     def __init__(self, message_callback = print, typing_callback = doNothing, name=""):
         Thread.__init__(self)
+        self.messages = []
         self.message_callback = message_callback
         self.name = name
 
@@ -64,13 +66,15 @@ class OmegleClient(Thread):
             except Exception:
                 break
             #We read the HTTP output to get what's going on
-            rec = loads(site.read().decode('ascii'))[0]
+            full_response = site.read().decode('utf-8')
+            rec = loads(full_response)[0]
             self.printDebug("got response {}".format(rec))
 
             if rec[0] == 'connected':
                 self.connected = True
                 self.printQueuedMessages()
                 self.printDebug('Found one')
+                self.printDebug('other info: {}'.format(full_response))
 
             elif rec[0] == 'waiting':
                 self.connected = False
@@ -85,7 +89,7 @@ class OmegleClient(Thread):
                 #We start the whole process again
                 self.omegleConnect()
 
-            #When we receive a message, print it and execute the talk function            
+            #When we receive a message, print it and execute the talk function
             elif rec[0] == 'gotMessage':
                 self.connected = True
                 self.printQueuedMessages()
@@ -96,13 +100,15 @@ class OmegleClient(Thread):
 #Here we listen to the start page to acquire the ID, then we "clean" the string to isolate the ID
     def omegleConnect(self):
         self.connected = False
-        self.messages = []
-        site = request.urlopen('http://omegle.com/start')
-        self.id = fmtId( site.read() )
-        self.printDebug(self.id)
-        data = getParamString({'id':self.id}) #, 'topics':'''["test"]'''})
+        data = parse.urlencode({'lang':'en', 'spid':'', 'rcs':'1'})#, 'topics':'''["sports"]'''})
+        self.printDebug(data)
+        site = request.urlopen('http://omegle.com/start?'+data)
+        response = site.read().decode('utf-8')
+        self.printDebug("site response: {}".format(response))
+        self.id = fmtId(response)
+        data = getParamString({'id':self.id})
         self.req = request.Request('http://omegle.com/events', data)
-        self.printDebug('Gotta find one')
+        self.printDebug('\033[01;31mSearching...\033[01;30m')
 
         #Then we open our ears to the wonders of the events page, where we know if anything happens
         #We have to pass two arguments: the ID and the events page.
@@ -112,11 +118,29 @@ class OmegleClient(Thread):
 alice = OmegleClient(name = "Alice")
 bob = OmegleClient(name = "Bob")
 
+def multiple_replacer(key_values):
+    replacement_function = lambda match: key_values[match.group(0)]
+    pattern = compile("|".join([escape(k) for k, v in key_values.items()]), M)
+    return lambda string: pattern.sub(replacement_function, string)
+
+def multiple_replace(string, key_values):
+    return multiple_replacer(key_values)(string)
+
+def fiddleMessage(message):
+    rep = {"m": "f", "f": "m"}
+    return multiple_replace(message, rep)
+    #message = message.replace("asl", "Good day! Whereabouts are you from")
+    #message = message.replace(" m ", " f ")
+    #message = message.replace(" M ", " F ")
+    return message
+
 def printAlice(message):
+    message = fiddleMessage(message)
     print("\033[01;31mAlice: {}\033[01;30m".format(message))
     bob.sendMessage(message)
 
 def printBob(message):
+    message = fiddleMessage(message)
     print("\033[01;31mBob: {}\033[01;30m".format(message))
     alice.sendMessage(message)
 
