@@ -5,6 +5,8 @@ import re
 
 from threading import Thread
 
+log_file = open("omegle.log", "w")
+
 #This simply cuts the extra characters to isolate the ID
 def fmtId( string ):
     return string[1:len( string ) - 1]
@@ -22,8 +24,12 @@ class OmegleClient(Thread):
         self.message_callback = message_callback
         self.name = name
 
-    def printDebug(self, message):
-        print("{}: {}".format(self.name, message))
+    def printDebug(self, message, file=""):
+        out = "{}: {}".format(self.name, message)
+        if file != "":
+            file.write(out + "\n")
+        else:
+            print(out)
 
     def run(self):
         self.omegleConnect()
@@ -50,7 +56,7 @@ class OmegleClient(Thread):
 
     def printQueuedMessages(self):
         while len(self.messages) > 0:
-            message = self.messages.pop()
+            message = self.messages.pop(0)
             self.sendMessage(message)
             self.printDebug("resent {}".format(message))
 
@@ -67,6 +73,9 @@ class OmegleClient(Thread):
                 break
             #We read the HTTP output to get what's going on
             full_response = site.read().decode('utf-8')
+            if (full_response == 'null'):
+                break
+            self.printDebug("raw response: {}".format(full_response), log_file)
             rec = loads(full_response)[0]
             self.printDebug("got response {}".format(rec))
 
