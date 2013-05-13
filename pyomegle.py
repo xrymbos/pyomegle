@@ -127,7 +127,7 @@ def fiddleMessage(message):
     #result = robj.sub(lambda m: rep[reg_lookup[m.group(0)]], message)
     rep = {
         r"\bhi\b": "Good day!",
-        r"\bm\b": "f here",
+        r"\b\d*m\d*\b": "f here",
         r"\bhey\b": "Good day!",
         r"\bkik\b": "skype",
         r"\basl\b": "Greetings! Whereabouts are you from?",
