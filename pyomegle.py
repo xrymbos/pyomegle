@@ -1,7 +1,7 @@
 from urllib import request, parse
 from json import loads
 from socket import timeout
-from re import *
+import re
 
 from threading import Thread
 
@@ -118,21 +118,21 @@ class OmegleClient(Thread):
 alice = OmegleClient(name = "Alice")
 bob = OmegleClient(name = "Bob")
 
-def multiple_replacer(key_values):
-    replacement_function = lambda match: key_values[match.group(0)]
-    pattern = compile("|".join([escape(k) for k, v in key_values.items()]), M)
-    return lambda string: pattern.sub(replacement_function, string)
-
-def multiple_replace(string, key_values):
-    return multiple_replacer(key_values)(string)
-
 def fiddleMessage(message):
-    rep = {"m": "f", "f": "m"}
-    return multiple_replace(message, rep)
-    #message = message.replace("asl", "Good day! Whereabouts are you from")
-    #message = message.replace(" m ", " f ")
-    #message = message.replace(" M ", " F ")
-    return message
+    message = message.lower()
+    #replace m with f
+    rep = {r"\bm\b": "f", r"\bf\b": "m"}
+    reg_lookup = {"m":r"\bm\b", "f":r"\bf\b"}
+    robj = re.compile("|".join(rep.keys()))
+    result = robj.sub(lambda m: rep[reg_lookup[m.group(0)]], message)
+    rep = {
+        "\bhey\b": "Good day!",
+        "\bkik\b": "Naked pictures",
+        "\basl\b": "Greetings! Whereabouts are you from?",
+        "\blol\b": "Ha ha ha! I do find that amusing!"}
+    for search, replace in rep.items():
+        result = re.sub(search, replace, result)
+    return result
 
 def printAlice(message):
     message = fiddleMessage(message)
