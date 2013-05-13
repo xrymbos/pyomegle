@@ -66,7 +66,7 @@ class OmegleClient(Thread):
 
             max_response_time = 10
             if self.connected:
-                max_response_time = 30;
+                max_response_time = 120;
             try:
                 site = request.urlopen(self.req, timeout=max_response_time)
             except Exception:
@@ -136,9 +136,15 @@ def fiddleMessage(message):
     #result = robj.sub(lambda m: rep[reg_lookup[m.group(0)]], message)
     rep = {
         r"\bhi\b": "Good day!",
+        r"\bi'm\b": "i am",
+        r"m or f|f or m|m f|f m": "f here",
         r"\b\d*m\d*\b": "f here",
         r"\bhey\b": "Good day!",
+        r"\b(penis|cock|dick)\b": "pussy",
         r"\bkik\b": "skype",
+        r"\b(no|nah|nope)\b": "yesyes",
+        r"\b(yes|yeah|yea)\b": "no",
+        r"\byesyes\b": "yes",
         r"\basl\b": "Greetings! Whereabouts are you from?",
         r"\blol\b": "Ha ha ha! I do find that amusing!"}
     for search, replace in rep.items():
