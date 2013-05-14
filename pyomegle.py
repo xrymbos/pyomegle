@@ -60,6 +60,18 @@ class OmegleClient(Thread):
             self.sendMessage(message)
             self.printDebug("resent {}".format(message))
 
+    def markConnected(self):
+        if not self.connected:
+            self.connected = True
+            if False:
+                self.sendMessage("Hi, welcome to OMEGLE MAN-IN-THE-MIDDLE! You are\
+ connected to a stranger, but through an intermediary. If the\
+ stranger disconnects, you will be connected to someone else\
+ mid-conversation, without warning. Also, there is a word-filter\
+ which will change some words you say, without you realising.\
+ Have fun!")
+            self.printQueuedMessages()
+
     #This is where all the magic happens, we listen constantly to the page for events
     def listenServer(self):
         while True:
@@ -80,8 +92,7 @@ class OmegleClient(Thread):
             self.printDebug("got response {}".format(rec))
 
             if rec[0] == 'connected':
-                self.connected = True
-                self.printQueuedMessages()
+                self.markConnected()
                 self.printDebug('Found one')
                 self.printDebug('other info: {}'.format(full_response))
 
@@ -89,8 +100,7 @@ class OmegleClient(Thread):
                 self.connected = False
 
             elif rec[0] == 'typing':
-                self.connected = True
-                self.printQueuedMessages()
+                self.markConnected()
                 self.typing_callback()
 
             elif rec[0] == 'strangerDisconnected':
@@ -100,8 +110,7 @@ class OmegleClient(Thread):
 
             #When we receive a message, print it and execute the talk function
             elif rec[0] == 'gotMessage':
-                self.connected = True
-                self.printQueuedMessages()
+                self.markConnected()
                 self.message_callback(rec[1])
                 #print(rec[16:len( rec ) - 2])
         self.omegleConnect()
@@ -137,7 +146,6 @@ def fiddleMessage(message):
     rep = {
         r"\bhi\b": "Good day!",
         r"\bi'm\b": "i am",
-        r"m or f|f or m|m f|f m": "f here",
         r"\b\d*m\d*\b": "f here",
         r"\bhey\b": "Good day!",
         r"\b(penis|cock|dick)\b": "pussy",
