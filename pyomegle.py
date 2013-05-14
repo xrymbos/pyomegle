@@ -17,12 +17,28 @@ def getParamString(params):
 def doNothing():
     return 0
 
+def redden(string):
+    return '\033[01;31m{}\033[01;30m'.format(string)
+
+class DummyOmegleClient(object):
+    def __init__(self):
+        self.connected = True
+
+    def showTyping(self):
+        print("bot: stranger typing...")
+
+    def sendMessage(self, message):
+        print("bot: recieved {}".format(message))
+
+    def printOutgoingMessages(self):
+        print("bot: printing outgoing messages")
+
 class OmegleClient(Thread):
-    def __init__(self, message_callback = print, typing_callback = doNothing, name=""):
+    def __init__(self, name="", partner=DummyOmegleClient()):
         Thread.__init__(self)
         self.messages = []
-        self.message_callback = message_callback
         self.name = name
+        self.partner = partner
 
     def printDebug(self, message, file=""):
         out = "{}: {}".format(self.name, message)
@@ -40,37 +56,29 @@ class OmegleClient(Thread):
         typing = request.urlopen('http://omegle.com/typing', data)
         typing.close()
 
-
     def sendMessage(self, message):
-        self.printDebug("sending message {} to {}".format(message, self.name))
-        if self.connected:
-            #Send the string to the stranger ID
-            data = getParamString({"msg":message, "id":self.id})
-            msgReq = request.urlopen('http://omegle.com/send', data)
+        data = getParamString({"msg":message, "id":self.id})
+        msgReq = request.urlopen('http://omegle.com/send', data)
+        msgReq.close()
 
-            #Close the connection
-            msgReq.close()
-        else:
-            self.printDebug("queuing message {} to {} for later".format(message, self.name))
-            self.messages.append(message)
-
-    def printQueuedMessages(self):
+    def printOutgoingMessages(self):
         while len(self.messages) > 0:
             message = self.messages.pop(0)
-            self.sendMessage(message)
+            partner.sendMessage(message)
             self.printDebug("resent {}".format(message))
 
     def markConnected(self):
         if not self.connected:
+            self.printDebug('Connected')
             self.connected = True
-            if False:
-                self.sendMessage("Hi, welcome to OMEGLE MAN-IN-THE-MIDDLE! You are\
- connected to a stranger, but through an intermediary. If the\
- stranger disconnects, you will be connected to someone else\
- mid-conversation, without warning. Also, there is a word-filter\
- which will change some words you say, without you realising.\
- Have fun!")
-            self.printQueuedMessages()
+            self.partner.printOutgoingMessages()
+
+    def __receivedMessage(self, message):
+        self.printDebug(redden(message))
+        self.markConnected()
+        if self.partner.connected:
+            self.printOutgoingMessages()
+            self.partner.sendMessage(message)
 
     #This is where all the magic happens, we listen constantly to the page for events
     def listenServer(self):
@@ -93,26 +101,25 @@ class OmegleClient(Thread):
 
             if rec[0] == 'connected':
                 self.markConnected()
-                self.printDebug('Found one')
-                self.printDebug('other info: {}'.format(full_response))
 
             elif rec[0] == 'waiting':
                 self.connected = False
 
             elif rec[0] == 'typing':
                 self.markConnected()
-                self.typing_callback()
+                self.partner.showTyping()
 
             elif rec[0] == 'strangerDisconnected':
-                self.printDebug('He is gone')
+                self.printDebug('Disconnected')
+                self.connected = False
                 #We start the whole process again
                 self.omegleConnect()
 
             #When we receive a message, print it and execute the talk function
             elif rec[0] == 'gotMessage':
                 self.markConnected()
-                self.message_callback(rec[1])
-                #print(rec[16:len( rec ) - 2])
+                self.__receivedMessage(rec[1])
+
         self.omegleConnect()
 
 #Here we listen to the start page to acquire the ID, then we "clean" the string to isolate the ID
@@ -131,10 +138,6 @@ class OmegleClient(Thread):
         #Then we open our ears to the wonders of the events page, where we know if anything happens
         #We have to pass two arguments: the ID and the events page.
         self.listenServer()
-
-
-alice = OmegleClient(name = "Alice")
-bob = OmegleClient(name = "Bob")
 
 def fiddleMessage(message):
     result = message.lower()
@@ -159,29 +162,11 @@ def fiddleMessage(message):
         result = re.sub(search, replace, result)
     return result
 
-def printAlice(message):
-    message = fiddleMessage(message)
-    print("\033[01;31mAlice: {}\033[01;30m".format(message))
-    bob.sendMessage(message)
-
-def printBob(message):
-    message = fiddleMessage(message)
-    print("\033[01;31mBob: {}\033[01;30m".format(message))
-    alice.sendMessage(message)
-
-def typingAlice():
-    bob.showTyping()
-
-def typingBob():
-    alice.showTyping()
-
-alice.message_callback = printAlice
-bob.message_callback = printBob
-alice.typing_callback = typingAlice
-bob.typing_callback = typingBob
+alice = OmegleClient(name = "Alice")
+bob = OmegleClient(name = "Bob")
+alice.partner = bob
+bob.partner = alice
 
 alice.start()
 bob.start()
 
-#while True:
-    #alice.sendMessage(input(">"))
